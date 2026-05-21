@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 36 33% 97%;
+    --foreground: 24 25% 15%;
+    --card: 36 33% 97%;
+    --card-foreground: 24 25% 15%;
+    --popover: 36 33% 97%;
+    --popover-foreground: 24 25% 15%;
+    --primary: 24 80% 35%;
+    --primary-foreground: 36 33% 97%;
+    --secondary: 36 30% 90%;
+    --secondary-foreground: 24 25% 15%;
+    --muted: 36 20% 92%;
+    --muted-foreground: 24 10% 45%;
+    --accent: 36 60% 50%;
+    --accent-foreground: 36 33% 97%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 36 20% 85%;
+    --input: 36 20% 85%;
+    --ring: 24 80% 35%;
+    --chart-1: 24 80% 35%;
+    --chart-2: 36 60% 50%;
+    --chart-3: 30 50% 60%;
+    --chart-4: 20 70% 45%;
+    --chart-5: 40 50% 55%;
+    --radius: 0.625rem;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 24 25% 15%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-family: 'Inter', system-ui, sans-serif;
+    margin: 0;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Playfair Display', serif;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'Playfair Display', serif;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
