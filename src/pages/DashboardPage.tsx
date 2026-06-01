@@ -3,9 +3,10 @@ import {
   getTransactionsByDateRange,
   getPengeluaranByDateRange,
   getOutstandingKasbon,
+  getAllOpenBills,
 } from '@/lib/firestore';
 import { formatRupiah, getShiftDate } from '@/lib/format';
-import type { Transaction, Pengeluaran, Kasbon } from '@/lib/types';
+import type { Transaction, Pengeluaran, Kasbon, OpenBill } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { TrendingUp, DollarSign, Receipt, CreditCard, TrendingDown, ShoppingCart, ChartBar as BarChart3, Package, Wallet, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { TrendingUp, DollarSign, Receipt, CreditCard, TrendingDown, ShoppingCart, ChartBar as BarChart3, Package, Wallet, ArrowUpRight, ArrowDownRight, Clock } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -116,6 +117,7 @@ export default function DashboardPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [pengeluaran, setPengeluaran] = useState<Pengeluaran[]>([]);
   const [outstandingKasbon, setOutstandingKasbon] = useState<Kasbon[]>([]);
+  const [openBills, setOpenBills] = useState<OpenBill[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Previous period data for trend
@@ -128,14 +130,16 @@ export default function DashboardPage() {
       const range = period === 'custom'
         ? { start: customStart, end: customEnd }
         : getDateRange(period);
-      const [txns, pengs, kasbon] = await Promise.all([
+      const [txns, pengs, kasbon, bills] = await Promise.all([
         getTransactionsByDateRange(range.start, range.end),
         getPengeluaranByDateRange(range.start, range.end),
         getOutstandingKasbon(),
+        getAllOpenBills(),
       ]);
       setTransactions(txns);
       setPengeluaran(pengs);
       setOutstandingKasbon(kasbon);
+      setOpenBills(bills);
 
       // Load previous period for trends
       const prevRange = getPreviousRange(period);
@@ -158,6 +162,19 @@ export default function DashboardPage() {
   };
 
   useEffect(() => { loadData(); }, [period]);
+
+  // Auto-refresh open bills every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const bills = await getAllOpenBills();
+        setOpenBills(bills);
+      } catch {
+        // Silently fail
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const paidTxns = useMemo(() => transactions.filter((t) => t.status === 'paid'), [transactions]);
   const prevPaidTxns = useMemo(() => prevTransactions.filter((t) => t.status === 'paid'), [prevTransactions]);
@@ -398,6 +415,53 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Open Bill Aktif Card */}
+          <Card className="border-blue-200 bg-blue-50">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-blue-600" />
+                  Open Bill Aktif
+                </CardTitle>
+                <span className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full">{openBills.length}</span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {openBills.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-green-600 font-medium">Tidak ada open bill aktif</p>
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {openBills.map((bill) => (
+                    <div key={bill.id} className="bg-white rounded-lg border border-blue-200 p-3 space-y-2">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-medium text-sm">{bill.customerName}</p>
+                          <p className="text-xs text-muted-foreground">{bill.kasirName}</p>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>{new Date(bill.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        {bill.items.map((item, idx) => (
+                          <p key={idx} className="text-xs text-muted-foreground">
+                            {item.productName} × {item.qty}
+                          </p>
+                        ))}
+                      </div>
+                      <div className="pt-2 border-t border-blue-100">
+                        <p className="text-sm font-bold text-blue-600">{formatRupiah(bill.total)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* KPI Row 3: Total Transaksi */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

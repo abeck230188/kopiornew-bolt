@@ -205,6 +205,14 @@ export async function deleteOpenBill(id: string) {
   await deleteDoc(doc(db, 'openBills', id));
 }
 
+export async function getAllOpenBills(): Promise<OpenBill[]> {
+  return fetchWithFallback<OpenBill>(
+    () => query(collection(db, 'openBills'), orderBy('createdAt', 'desc')),
+    () => query(collection(db, 'openBills')),
+    (d) => ({ id: d.id, ...d.data() } as OpenBill),
+  );
+}
+
 // --- KASBON ---
 export async function addKasbon(data: Omit<Kasbon, 'id'>): Promise<string> {
   const ref = await addDoc(collection(db, 'kasbon'), data);
