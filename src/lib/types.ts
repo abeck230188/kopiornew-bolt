@@ -128,3 +128,17 @@ export interface Pengeluaran {
 }
 
 export type PengeluaranKategori = Pengeluaran['kategori'];
+
+export interface BahanBaku {
+  id: string;
+  namaBahan: string;
+  kategori?: string;
+  hargaBeli: number;
+  qtyPembelian: number;
+  satuan: 'gram' | 'ml' | 'liter' | 'kg' | 'pcs' | 'botol' | 'sachet' | 'lainnya';
+  stokSaatIni: number;
+  stokMinimum: number;
+  createdAt: number;
+  updatedAt: number;
+}
+

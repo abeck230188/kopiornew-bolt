@@ -22,6 +22,7 @@ import type {
   Kasbon,
   Pengeluaran,
   UserProfile,
+  BahanBaku,
 } from '@/lib/types';
 
 // Helper: fetch with fallback - tries indexed query first, falls back to client-side filtering
@@ -291,4 +292,24 @@ export async function getPengeluaranByDateRange(startDate: string, endDate: stri
     (d) => ({ id: d.id, ...d.data() } as Pengeluaran),
     (p) => p.shiftDate >= startDate && p.shiftDate <= endDate,
   );
+}
+
+// --- BAHAN BAKU ---
+export async function addBahanBaku(data: Omit<BahanBaku, 'id'>): Promise<string> {
+  const ref = await addDoc(collection(db, 'bahan_baku'), data);
+  return ref.id;
+}
+
+export async function getBahanBakuList(): Promise<BahanBaku[]> {
+  const q = query(collection(db, 'bahan_baku'), orderBy('namaBahan', 'asc'));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as BahanBaku));
+}
+
+export async function updateBahanBaku(id: string, data: Partial<BahanBaku>) {
+  await updateDoc(doc(db, 'bahan_baku', id), data);
+}
+
+export async function deleteBahanBaku(id: string) {
+  await deleteDoc(doc(db, 'bahan_baku', id));
 }
