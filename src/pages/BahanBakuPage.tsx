@@ -7,6 +7,7 @@ import {
   deleteBahanBaku,
   getPurchaseList,
   savePurchaseSession,
+  deletePurchaseWithRevert,
 } from '@/lib/firestore';
 import { formatRupiah } from '@/lib/format';
 import type { BahanBaku, Purchase } from '@/lib/types';
@@ -67,6 +68,9 @@ export default function BahanBakuPage() {
     { bahanId: '', bahanName: '', satuan: '', qty: 0, totalPrice: 0 },
   ]);
   const [savingPurchase, setSavingPurchase] = useState(false);
+  const [showDeletePurchaseDialog, setShowDeletePurchaseDialog] = useState(false);
+  const [deletePurchaseTarget, setDeletePurchaseTarget] = useState<{ id: string; bahanId: string; qty: number; name: string } | null>(null);
+  const [deletingPurchase, setDeletingPurchase] = useState(false);
 
   // Bahan form fields
   const [namaBahan, setNamaBahan] = useState('');
@@ -216,6 +220,26 @@ export default function BahanBakuPage() {
       toast.error('Gagal: ' + err.message);
     } finally {
       setSavingPurchase(false);
+    }
+  };
+
+  const handleDeletePurchase = async () => {
+    if (!deletePurchaseTarget) return;
+    setDeletingPurchase(true);
+    try {
+      await deletePurchaseWithRevert(
+        deletePurchaseTarget.id,
+        deletePurchaseTarget.bahanId,
+        deletePurchaseTarget.qty,
+      );
+      toast.success('Pembelian dihapus & stok direvert');
+      setShowDeletePurchaseDialog(false);
+      setDeletePurchaseTarget(null);
+      loadData();
+    } catch (err: any) {
+      toast.error('Gagal: ' + err.message);
+    } finally {
+      setDeletingPurchase(false);
     }
   };
 
@@ -461,13 +485,32 @@ export default function BahanBakuPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2 text-xs">
-                        {items.map((item, idx) => (
-                          <div key={idx} className="flex justify-between items-center py-1 border-b last:border-0">
-                            <span>{item.item_name}</span>
-                            <span className="text-muted-foreground">{item.quantity} {item.satuan}</span>
-                            <span className="font-medium">{formatRupiah(item.total_price)}</span>
-                          </div>
-                        ))}
+                        {items.map((item, idx) => {
+                          const bahan = bahanList.find((b) => b.namaBahan === item.item_name);
+                          return (
+                            <div key={idx} className="flex justify-between items-center py-1 border-b last:border-0 group">
+                              <span>{item.item_name}</span>
+                              <span className="text-muted-foreground">{item.quantity} {item.satuan}</span>
+                              <span className="font-medium">{formatRupiah(item.total_price)}</span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                onClick={() => {
+                                  setDeletePurchaseTarget({
+                                    id: item.id,
+                                    bahanId: bahan?.id || '',
+                                    qty: item.quantity,
+                                    name: item.item_name,
+                                  });
+                                  setShowDeletePurchaseDialog(true);
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          );
+                        })}
                       </div>
                     </CardContent>
                   </Card>
@@ -575,7 +618,7 @@ export default function BahanBakuPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Bahan Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
@@ -598,6 +641,36 @@ export default function BahanBakuPage() {
               disabled={processing}
             >
               {processing ? 'Menghapus...' : 'Hapus'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Purchase Confirmation Dialog */}
+      <Dialog open={showDeletePurchaseDialog} onOpenChange={setShowDeletePurchaseDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Hapus Pembelian</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm">
+            Yakin ingin menghapus pembelian <span className="font-semibold">{deletePurchaseTarget?.name}</span>?
+            <br />
+            <span className="text-xs text-muted-foreground mt-2 block">Stok akan direvert sebesar {deletePurchaseTarget?.qty} dan pengeluaran akan dihapus.</span>
+          </p>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeletePurchaseDialog(false)}
+              disabled={deletingPurchase}
+            >
+              Batalkan
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeletePurchase}
+              disabled={deletingPurchase}
+            >
+              {deletingPurchase ? 'Menghapus...' : 'Hapus'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -335,6 +335,41 @@ export async function deletePurchase(id: string) {
   await deleteDoc(doc(db, 'purchases', id));
 }
 
+export async function deletePurchaseWithRevert(purchaseId: string, bahanId: string, qty: number) {
+  // Get the purchase to find the pengeluaran
+  const purchase = await getDoc(doc(db, 'purchases', purchaseId));
+  if (!purchase.exists()) return;
+
+  const purchaseData = purchase.data() as Purchase;
+
+  // Revert stock
+  const bahan = await getDoc(doc(db, 'bahan_baku', bahanId));
+  if (bahan.exists()) {
+    const bahanData = bahan.data() as BahanBaku;
+    await updateBahanBaku(bahanId, {
+      stokSaatIni: Math.max(0, bahanData.stokSaatIni - qty),
+      updatedAt: Date.now(),
+    });
+  }
+
+  // Find and delete related pengeluaran entry
+  const shiftDate = new Date(purchaseData.date).toISOString().split('T')[0];
+  const pengeluaranQ = query(
+    collection(db, 'pengeluaran'),
+    where('shiftDate', '==', shiftDate),
+    where('kategori', '==', 'Belanja Bahan'),
+  );
+  const pengeluaranSnap = await getDocs(pengeluaranQ);
+
+  // Delete all matching pengeluaran entries for this date
+  for (const doc of pengeluaranSnap.docs) {
+    await deleteDoc(doc.ref);
+  }
+
+  // Delete the purchase
+  await deleteDoc(doc(db, 'purchases', purchaseId));
+}
+
 export async function savePurchaseSession(
   purchases: Array<{ bahanId: string; bahanName: string; satuan: string; qty: number; totalPrice: number; date: number }>,
   createdBy: string,
