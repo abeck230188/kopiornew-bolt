@@ -1,4 +1,4 @@
-import { Coffee, ShoppingCart, Clock, Receipt, CreditCard, BookOpen, ChartBar as BarChart3, History, LogOut, X, Users, LayoutDashboard, Package } from 'lucide-react';
+import { Coffee, ShoppingCart, Clock, Receipt, CreditCard, BookOpen, ChartBar as BarChart3, History, LogOut, X, Users, LayoutDashboard, Package, Utensils } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth-context';
 import type { Page } from '@/components/MainLayout';
@@ -25,6 +25,7 @@ const kasirItems: { page: Page; label: string; icon: any }[] = [
 const adminItems: { page: Page; label: string; icon: any }[] = [
   { page: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { page: 'menu', label: 'Produk', icon: BookOpen },
+  { page: 'resep_produk', label: 'Resep Produk', icon: Utensils },
   { page: 'bahan_baku', label: 'Bahan Baku', icon: Package },
   { page: 'laporan', label: 'Laporan', icon: BarChart3 },
   { page: 'kasbon', label: 'Kasbon', icon: CreditCard },

@@ -24,6 +24,7 @@ import type {
   UserProfile,
   BahanBaku,
   Purchase,
+  ResepProduk,
 } from '@/lib/types';
 
 // Helper: fetch with fallback - tries indexed query first, falls back to client-side filtering
@@ -422,4 +423,59 @@ export async function savePurchaseSession(
       createdAt: Date.now(),
     } as Pengeluaran);
   }
+}
+
+// --- RESEP PRODUK ---
+export async function getResepByProductId(productId: string): Promise<ResepProduk[]> {
+  const q = query(collection(db, 'resep_produk'), where('product_id', '==', productId));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as ResepProduk));
+}
+
+export async function saveResepIngredient(
+  productId: string,
+  bahanId: string,
+  qtyPerServing: number,
+): Promise<string> {
+  const existing = await getDocs(
+    query(
+      collection(db, 'resep_produk'),
+      where('product_id', '==', productId),
+      where('bahan_baku_id', '==', bahanId),
+    ),
+  );
+
+  if (existing.docs.length > 0) {
+    await updateDoc(existing.docs[0].ref, { qty_per_serving: qtyPerServing });
+    return existing.docs[0].id;
+  }
+
+  const ref = await addDoc(collection(db, 'resep_produk'), {
+    product_id: productId,
+    bahan_baku_id: bahanId,
+    qty_per_serving: qtyPerServing,
+    created_at: Date.now(),
+  });
+  return ref.id;
+}
+
+export async function deleteResepIngredient(id: string) {
+  await deleteDoc(doc(db, 'resep_produk', id));
+}
+
+export async function calculateResepHpp(productId: string, bahanList: BahanBaku[]): Promise<number> {
+  const resepItems = await getResepByProductId(productId);
+  if (resepItems.length === 0) return 0;
+
+  return resepItems.reduce((total, item) => {
+    const bahan = bahanList.find((b) => b.id === item.bahan_baku_id);
+    if (!bahan) return total;
+
+    const hargaSatuan = bahan.hargaSatuan || Math.round(bahan.hargaBeli / bahan.qtyPembelian);
+    return total + item.qty_per_serving * hargaSatuan;
+  }, 0);
+}
+
+export async function updateProductHpp(productId: string, hpp: number) {
+  await updateDoc(doc(db, 'products', productId), { hpp });
 }

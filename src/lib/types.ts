@@ -158,3 +158,10 @@ export interface Purchase {
   createdAt: number;
 }
 
+export interface ResepProduk {
+  id: string;
+  product_id: string;
+  bahan_baku_id: string;
+  qty_per_serving: number;
+  created_at: number;
+}
