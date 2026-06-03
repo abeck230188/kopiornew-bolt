@@ -334,3 +334,53 @@ export async function updatePurchase(id: string, data: Partial<Purchase>) {
 export async function deletePurchase(id: string) {
   await deleteDoc(doc(db, 'purchases', id));
 }
+
+export async function savePurchaseSession(
+  purchases: Array<{ bahanId: string; bahanName: string; qty: number; pricePerUnit: number; date: number }>,
+  createdBy: string,
+  date: number,
+) {
+  // Get today's shift date
+  const shiftDate = new Date(date).toISOString().split('T')[0];
+
+  // Save each purchase to purchases collection
+  for (const p of purchases) {
+    await addPurchase({
+      date,
+      item_name: p.bahanName,
+      category: 'Belanja Bahan',
+      quantity: p.qty,
+      unit: 'unit',
+      price_per_unit: p.pricePerUnit,
+      total_price: p.qty * p.pricePerUnit,
+      created_by: createdBy,
+      createdAt: Date.now(),
+    });
+
+    // Update stok_saat_ini for this bahan
+    const bahan = await getDoc(doc(db, 'bahan_baku', p.bahanId));
+    if (bahan.exists()) {
+      const currentStok = (bahan.data() as BahanBaku).stokSaatIni;
+      await updateBahanBaku(p.bahanId, {
+        stokSaatIni: currentStok + p.qty,
+        updatedAt: Date.now(),
+      });
+    }
+  }
+
+  // Add to pengeluaran if there's an active shift
+  const activeShift = await getActiveShift(createdBy);
+  if (activeShift) {
+    const totalSpent = purchases.reduce((sum, p) => sum + p.qty * p.pricePerUnit, 0);
+    await addDoc(collection(db, 'pengeluaran'), {
+      shiftId: activeShift.id,
+      shiftDate,
+      kasirUid: createdBy,
+      kasirName: activeShift.kasirName,
+      deskripsi: `Belanja Bahan: ${purchases.map((p) => p.bahanName).join(', ')}`,
+      jumlah: totalSpent,
+      kategori: 'Belanja Bahan',
+      createdAt: Date.now(),
+    } as Pengeluaran);
+  }
+}
