@@ -46,8 +46,9 @@ const SATUAN_OPTIONS = ['gram', 'ml', 'liter', 'kg', 'pcs', 'botol', 'sachet', '
 interface PurchaseItem {
   bahanId: string;
   bahanName: string;
+  satuan: string;
   qty: number;
-  pricePerUnit: number;
+  totalPrice: number;
 }
 
 export default function BahanBakuPage() {
@@ -63,7 +64,7 @@ export default function BahanBakuPage() {
   // Purchase form fields
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([
-    { bahanId: '', bahanName: '', qty: 0, pricePerUnit: 0 },
+    { bahanId: '', bahanName: '', satuan: '', qty: 0, totalPrice: 0 },
   ]);
   const [savingPurchase, setSavingPurchase] = useState(false);
 
@@ -171,7 +172,7 @@ export default function BahanBakuPage() {
 
   // Purchase management
   const handleAddPurchaseItem = () => {
-    setPurchaseItems([...purchaseItems, { bahanId: '', bahanName: '', qty: 0, pricePerUnit: 0 }]);
+    setPurchaseItems([...purchaseItems, { bahanId: '', bahanName: '', satuan: '', qty: 0, totalPrice: 0 }]);
   };
 
   const handleRemovePurchaseItem = (index: number) => {
@@ -186,6 +187,7 @@ export default function BahanBakuPage() {
       const bahan = bahanList.find((b) => b.id === value);
       if (bahan) {
         updated[index].bahanName = bahan.namaBahan;
+        updated[index].satuan = bahan.satuan;
       }
     }
 
@@ -195,7 +197,7 @@ export default function BahanBakuPage() {
   const handleSavePurchaseSession = async () => {
     if (!profile) return;
 
-    const validItems = purchaseItems.filter((item) => item.bahanId && item.qty > 0 && item.pricePerUnit > 0);
+    const validItems = purchaseItems.filter((item) => item.bahanId && item.qty > 0 && item.totalPrice > 0);
     if (validItems.length === 0) {
       toast.error('Tambahkan minimal 1 item pembelian');
       return;
@@ -208,7 +210,7 @@ export default function BahanBakuPage() {
       await savePurchaseSession(itemsWithDate, profile.uid, date);
       toast.success('Pembelian disimpan & stok diperbarui');
       setPurchaseDate(new Date().toISOString().split('T')[0]);
-      setPurchaseItems([{ bahanId: '', bahanName: '', qty: 0, pricePerUnit: 0 }]);
+      setPurchaseItems([{ bahanId: '', bahanName: '', satuan: '', qty: 0, totalPrice: 0 }]);
       loadData();
     } catch (err: any) {
       toast.error('Gagal: ' + err.message);
@@ -389,20 +391,26 @@ export default function BahanBakuPage() {
                         placeholder="0"
                       />
                     </div>
-                    <div className="w-24 space-y-1">
-                      <Label className="text-xs">Harga/Unit</Label>
+                    <div className="w-20 space-y-1">
+                      <Label className="text-xs">Satuan</Label>
+                      <div className="h-8 flex items-center text-xs font-medium px-2 bg-gray-50 rounded border">
+                        {item.satuan || '-'}
+                      </div>
+                    </div>
+                    <div className="w-28 space-y-1">
+                      <Label className="text-xs">Total (Rp)</Label>
                       <Input
                         type="number"
-                        value={item.pricePerUnit || ''}
-                        onChange={(e) => handlePurchaseItemChange(idx, 'pricePerUnit', parseInt(e.target.value) || 0)}
+                        value={item.totalPrice || ''}
+                        onChange={(e) => handlePurchaseItemChange(idx, 'totalPrice', parseInt(e.target.value) || 0)}
                         className="h-8 text-xs"
                         placeholder="0"
                       />
                     </div>
                     <div className="w-24 space-y-1">
-                      <Label className="text-xs">Total</Label>
+                      <Label className="text-xs">Harga/Satuan</Label>
                       <div className="h-8 flex items-center text-xs font-medium text-blue-600">
-                        {formatRupiah(item.qty * item.pricePerUnit)}
+                        {formatRupiah(item.qty > 0 ? Math.round(item.totalPrice / item.qty) : 0)}
                       </div>
                     </div>
                     <Button
@@ -422,7 +430,7 @@ export default function BahanBakuPage() {
               </Button>
 
               <div className="border-t pt-3 text-sm font-semibold">
-                Total: {formatRupiah(purchaseItems.reduce((sum, item) => sum + item.qty * item.pricePerUnit, 0))}
+                Total: {formatRupiah(purchaseItems.reduce((sum, item) => sum + item.totalPrice, 0))}
               </div>
 
               <Button onClick={handleSavePurchaseSession} disabled={savingPurchase} className="w-full">
@@ -456,7 +464,7 @@ export default function BahanBakuPage() {
                         {items.map((item, idx) => (
                           <div key={idx} className="flex justify-between items-center py-1 border-b last:border-0">
                             <span>{item.item_name}</span>
-                            <span className="text-muted-foreground">{item.quantity} × {formatRupiah(item.price_per_unit)}</span>
+                            <span className="text-muted-foreground">{item.quantity} {item.satuan}</span>
                             <span className="font-medium">{formatRupiah(item.total_price)}</span>
                           </div>
                         ))}

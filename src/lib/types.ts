@@ -138,6 +138,7 @@ export interface BahanBaku {
   satuan: 'gram' | 'ml' | 'liter' | 'kg' | 'pcs' | 'botol' | 'sachet' | 'lainnya';
   stokSaatIni: number;
   stokMinimum: number;
+  hargaSatuan?: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -149,6 +150,7 @@ export interface Purchase {
   category: string;
   quantity: number;
   unit: string;
+  satuan: string;
   price_per_unit: number;
   total_price: number;
   created_by: string;

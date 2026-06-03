@@ -336,7 +336,7 @@ export async function deletePurchase(id: string) {
 }
 
 export async function savePurchaseSession(
-  purchases: Array<{ bahanId: string; bahanName: string; qty: number; pricePerUnit: number; date: number }>,
+  purchases: Array<{ bahanId: string; bahanName: string; satuan: string; qty: number; totalPrice: number; date: number }>,
   createdBy: string,
   date: number,
 ) {
@@ -345,24 +345,28 @@ export async function savePurchaseSession(
 
   // Save each purchase to purchases collection
   for (const p of purchases) {
+    const hargaSatuan = p.qty > 0 ? Math.round(p.totalPrice / p.qty) : 0;
+
     await addPurchase({
       date,
       item_name: p.bahanName,
       category: 'Belanja Bahan',
       quantity: p.qty,
       unit: 'unit',
-      price_per_unit: p.pricePerUnit,
-      total_price: p.qty * p.pricePerUnit,
+      satuan: p.satuan,
+      price_per_unit: hargaSatuan,
+      total_price: p.totalPrice,
       created_by: createdBy,
       createdAt: Date.now(),
     });
 
-    // Update stok_saat_ini for this bahan
+    // Update stok_saat_ini and hargaSatuan for this bahan
     const bahan = await getDoc(doc(db, 'bahan_baku', p.bahanId));
     if (bahan.exists()) {
       const currentStok = (bahan.data() as BahanBaku).stokSaatIni;
       await updateBahanBaku(p.bahanId, {
         stokSaatIni: currentStok + p.qty,
+        hargaSatuan,
         updatedAt: Date.now(),
       });
     }
@@ -371,7 +375,7 @@ export async function savePurchaseSession(
   // Add to pengeluaran if there's an active shift
   const activeShift = await getActiveShift(createdBy);
   if (activeShift) {
-    const totalSpent = purchases.reduce((sum, p) => sum + p.qty * p.pricePerUnit, 0);
+    const totalSpent = purchases.reduce((sum, p) => sum + p.totalPrice, 0);
     await addDoc(collection(db, 'pengeluaran'), {
       shiftId: activeShift.id,
       shiftDate,
