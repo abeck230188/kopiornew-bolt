@@ -23,6 +23,7 @@ import type {
   Pengeluaran,
   UserProfile,
   BahanBaku,
+  Purchase,
 } from '@/lib/types';
 
 // Helper: fetch with fallback - tries indexed query first, falls back to client-side filtering
@@ -312,4 +313,24 @@ export async function updateBahanBaku(id: string, data: Partial<BahanBaku>) {
 
 export async function deleteBahanBaku(id: string) {
   await deleteDoc(doc(db, 'bahan_baku', id));
+}
+
+// --- PURCHASES ---
+export async function addPurchase(data: Omit<Purchase, 'id'>): Promise<string> {
+  const ref = await addDoc(collection(db, 'purchases'), data);
+  return ref.id;
+}
+
+export async function getPurchaseList(): Promise<Purchase[]> {
+  const q = query(collection(db, 'purchases'), orderBy('date', 'desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Purchase));
+}
+
+export async function updatePurchase(id: string, data: Partial<Purchase>) {
+  await updateDoc(doc(db, 'purchases', id), data);
+}
+
+export async function deletePurchase(id: string) {
+  await deleteDoc(doc(db, 'purchases', id));
 }

@@ -13,10 +13,11 @@ import ReportsPage from '@/pages/ReportsPage';
 import RiwayatPage from '@/pages/RiwayatPage';
 import UserManagementPage from '@/pages/UserManagementPage';
 import DashboardPage from '@/pages/DashboardPage';
+import BahanBakuPage from '@/pages/BahanBakuPage';
 
-export type Page = 'dashboard' | 'pos' | 'shift' | 'open_bill' | 'kasbon' | 'menu' | 'laporan' | 'riwayat' | 'users';
+export type Page = 'dashboard' | 'pos' | 'shift' | 'open_bill' | 'kasbon' | 'menu' | 'laporan' | 'riwayat' | 'users' | 'bahan_baku';
 
-const ADMIN_PAGES: Page[] = ['dashboard', 'menu', 'laporan', 'kasbon', 'users'];
+const ADMIN_PAGES: Page[] = ['dashboard', 'menu', 'laporan', 'kasbon', 'users', 'bahan_baku'];
 const KASIR_PAGES: Page[] = ['shift', 'pos', 'open_bill', 'riwayat', 'kasbon'];
 
 export default function MainLayout() {
@@ -74,6 +75,8 @@ export default function MainLayout() {
         return isAdmin ? <ReportsPage /> : null;
       case 'users':
         return isAdmin ? <UserManagementPage /> : null;
+      case 'bahan_baku':
+        return isAdmin ? <BahanBakuPage /> : null;
       case 'riwayat':
         return !isAdmin ? <RiwayatPage activeShift={activeShift} /> : null;
       default:

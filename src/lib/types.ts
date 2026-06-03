@@ -142,3 +142,17 @@ export interface BahanBaku {
   updatedAt: number;
 }
 
+export interface Purchase {
+  id: string;
+  date: number;
+  item_name: string;
+  category: string;
+  quantity: number;
+  unit: string;
+  price_per_unit: number;
+  total_price: number;
+  created_by: string;
+  notes?: string;
+  createdAt: number;
+}
+
