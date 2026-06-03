@@ -396,13 +396,14 @@ export async function savePurchaseSession(
       createdAt: Date.now(),
     });
 
-    // Update stok_saat_ini and hargaSatuan for this bahan
+    // Update stok_saat_ini, hargaSatuan, and hargaBeli for this bahan
     const bahan = await getDoc(doc(db, 'bahan_baku', p.bahanId));
     if (bahan.exists()) {
       const currentStok = (bahan.data() as BahanBaku).stokSaatIni;
       await updateBahanBaku(p.bahanId, {
         stokSaatIni: currentStok + p.qty,
         hargaSatuan,
+        hargaBeli: hargaSatuan,
         updatedAt: Date.now(),
       });
     }
