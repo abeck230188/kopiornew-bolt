@@ -73,9 +73,13 @@ export default function ResepProdukPage() {
     setEditingProduct(product);
     setBahanSearch('');
     try {
+      // Refresh bahan list to get latest prices
+      const bahanData = await getBahanBakuList();
+      setBahanList(bahanData);
+
       const resepItems = await getResepByProductId(product.id);
       const ingredientRows = resepItems.map((r) => {
-        const bahan = bahanList.find((b) => b.id === r.bahan_baku_id);
+        const bahan = bahanData.find((b) => b.id === r.bahan_baku_id);
         return {
           resepId: r.id,
           bahanId: r.bahan_baku_id,
@@ -84,7 +88,7 @@ export default function ResepProdukPage() {
         };
       });
       setIngredients(ingredientRows);
-      const calculatedHpp = await calculateResepHpp(product.id, bahanList);
+      const calculatedHpp = await calculateResepHpp(product.id, bahanData);
       (calculatedHpp);
     } catch (err: any) {
       toast.error('Gagal memuat resep: ' + err.message);
@@ -289,8 +293,7 @@ export default function ResepProdukPage() {
               ) : (
                 ingredients.map((ing, idx) => {
                   const bahan = bahanList.find((b) => b.id === ing.bahanId);
-                  const hargaSatuan = bahan?.hargaSatuan || Math.round(bahan?.hargaBeli || 0 / (bahan?.qtyPembelian || 1));
-                  const cost = ing.qtyPerServing * hargaSatuan;
+                  const hargaBeli = bahan?.hargaBeli || 0;
                   return (
                     <div
                       key={idx}
@@ -309,7 +312,7 @@ export default function ResepProdukPage() {
                       </div>
                       <div className="text-right space-y-1">
                         <Label className="text-xs text-muted-foreground">{bahan?.satuan}</Label>
-                        <div className="text-xs font-medium">{formatRupiah(cost)}</div>
+                        <div className="text-xs font-medium text-blue-600">{formatRupiah(hargaBeli)}</div>
                       </div>
                       <Button
                         variant="ghost"
