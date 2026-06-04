@@ -153,6 +153,32 @@ export async function getShiftsByDateRange(startDate: string, endDate: string): 
 // --- TRANSACTIONS ---
 export async function addTransaction(data: Omit<Transaction, 'id'>): Promise<string> {
   const ref = await addDoc(collection(db, 'transactions'), data);
+
+  // Reduce stock based on recipes
+  for (const item of data.items) {
+    try {
+      // Get recipe for this product
+      const resepItems = await getResepByProductId(item.productId);
+
+      // For each ingredient in recipe, reduce stock
+      for (const resepItem of resepItems) {
+        const bahan = await getDoc(doc(db, 'bahan_baku', resepItem.bahan_baku_id));
+        if (bahan.exists()) {
+          const bahanData = bahan.data() as BahanBaku;
+          const stockToReduce = resepItem.qty_per_serving * item.qty;
+          const newStock = Math.max(0, bahanData.stokSaatIni - stockToReduce);
+
+          await updateBahanBaku(resepItem.bahan_baku_id, {
+            stokSaatIni: newStock,
+            updatedAt: Date.now(),
+          });
+        }
+      }
+    } catch (err) {
+      console.error(`Failed to reduce stock for product ${item.productId}:`, err);
+    }
+  }
+
   return ref.id;
 }
 
