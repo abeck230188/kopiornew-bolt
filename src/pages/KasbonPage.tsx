@@ -17,6 +17,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -25,7 +26,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { CreditCard, CircleCheck as CheckCircle, Clock, DollarSign, ChevronDown, ChevronUp, Pencil, Trash2, Plus, Minus, X } from 'lucide-react';
+import { CreditCard, CircleCheck as CheckCircle, Clock, DollarSign, ChevronDown, ChevronUp, Pencil, Trash2, Plus, Minus, X, ArrowDownUp } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props {
@@ -143,6 +144,7 @@ export default function KasbonPage({ activeShift }: Props) {
   const [deleteTarget, setDeleteTarget] = useState<Kasbon | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [sortMode, setSortMode] = useState<'date-asc' | 'name-asc' | 'name-desc'>('date-asc');
 
   const loadData = async () => {
     const [out, set] = await Promise.all([getOutstandingKasbon(), getSettledKasbon()]);
@@ -300,6 +302,21 @@ export default function KasbonPage({ activeShift }: Props) {
     }
   };
 
+  const sortKasbon = (list: Kasbon[]): Kasbon[] => {
+    const sorted = [...list];
+    if (sortMode === 'date-asc') {
+      sorted.sort((a, b) => a.createdAt - b.createdAt);
+    } else if (sortMode === 'name-asc') {
+      sorted.sort((a, b) => a.customerName.localeCompare(b.customerName));
+    } else {
+      sorted.sort((a, b) => b.customerName.localeCompare(a.customerName));
+    }
+    return sorted;
+  };
+
+  const sortedOutstanding = sortKasbon(outstanding);
+  const sortedSettled = sortKasbon(settled);
+
   // Filter products for add dialog
   const filteredProducts = allProducts.filter(
     (p) =>
@@ -312,7 +329,8 @@ export default function KasbonPage({ activeShift }: Props) {
       <h2 className="font-display text-xl font-bold">Kasbon</h2>
 
       <Tabs defaultValue="outstanding">
-        <TabsList className="bg-amber-100">
+        <div className="flex items-center justify-between gap-2">
+          <TabsList className="bg-amber-100">
           <TabsTrigger value="outstanding" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Clock className="h-4 w-4 mr-1" /> Outstanding
           </TabsTrigger>
@@ -320,6 +338,18 @@ export default function KasbonPage({ activeShift }: Props) {
             <CheckCircle className="h-4 w-4 mr-1" /> Lunas
           </TabsTrigger>
         </TabsList>
+          <Select value={sortMode} onValueChange={(v) => setSortMode(v as 'date-asc' | 'name-asc' | 'name-desc')}>
+            <SelectTrigger className="w-[180px] h-9 text-xs">
+              <ArrowDownUp className="h-3.5 w-3.5 mr-1" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date-asc">Tanggal (Terlama)</SelectItem>
+              <SelectItem value="name-asc">Nama (A-Z)</SelectItem>
+              <SelectItem value="name-desc">Nama (Z-A)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
         <TabsContent value="outstanding" className="space-y-3 mt-4">
           {outstanding.length === 0 ? (
@@ -330,7 +360,7 @@ export default function KasbonPage({ activeShift }: Props) {
               </CardContent>
             </Card>
           ) : (
-            outstanding.map((k) => (
+            sortedOutstanding.map((k) => (
               <KasbonCard
                 key={k.id}
                 k={k}
@@ -353,7 +383,7 @@ export default function KasbonPage({ activeShift }: Props) {
               </CardContent>
             </Card>
           ) : (
-            settled.map((k) => (
+            sortedSettled.map((k) => (
               <KasbonCard
                 key={k.id}
                 k={k}
