@@ -293,7 +293,7 @@ export default function ResepProdukPage() {
               ) : (
                 ingredients.map((ing, idx) => {
                   const bahan = bahanList.find((b) => b.id === ing.bahanId);
-                  const hargaPerUnit = bahan && bahan.qtyPembelian > 0 ? bahan.hargaBeli / bahan.qtyPembelian : 0;
+                  const hargaBeli = bahan?.hargaBeli || 0;
                   return (
                     <div
                       key={idx}
@@ -312,7 +312,7 @@ export default function ResepProdukPage() {
                       </div>
                       <div className="text-right space-y-1">
                         <Label className="text-xs text-muted-foreground">{bahan?.satuan}</Label>
-                        <div className="text-xs font-medium text-blue-600">{formatRupiah(hargaPerUnit)}</div>
+                        <div className="text-xs font-medium text-blue-600">{formatRupiah(hargaBeli)}</div>
                       </div>
                       <Button
                         variant="ghost"
