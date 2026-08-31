@@ -31,6 +31,10 @@ import {
 
 type FilterPeriod = 'today' | '7days' | 'month' | 'last_month' | 'custom';
 
+function formatLocalDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function getDateRange(period: FilterPeriod): { start: string; end: string } {
   const now = new Date();
   const today = getShiftDate();
@@ -40,7 +44,7 @@ function getDateRange(period: FilterPeriod): { start: string; end: string } {
     case '7days': {
       const d = new Date();
       d.setDate(d.getDate() - 6);
-      return { start: d.toISOString().slice(0, 10), end: today };
+      return { start: formatLocalDate(d), end: today };
     }
     case 'month': {
       const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
@@ -51,7 +55,7 @@ function getDateRange(period: FilterPeriod): { start: string; end: string } {
       const le = new Date(now.getFullYear(), now.getMonth(), 0);
       return {
         start: `${lm.getFullYear()}-${String(lm.getMonth() + 1).padStart(2, '0')}-01`,
-        end: le.toISOString().slice(0, 10),
+        end: formatLocalDate(le),
       };
     }
     default:
@@ -65,7 +69,7 @@ function getPreviousRange(period: FilterPeriod): { start: string; end: string } 
     case 'today': {
       const d = new Date();
       d.setDate(d.getDate() - 1);
-      const ds = d.toISOString().slice(0, 10);
+      const ds = formatLocalDate(d);
       return { start: ds, end: ds };
     }
     case '7days': {
@@ -73,14 +77,14 @@ function getPreviousRange(period: FilterPeriod): { start: string; end: string } 
       end.setDate(end.getDate() - 7);
       const start = new Date();
       start.setDate(start.getDate() - 13);
-      return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
+      return { start: formatLocalDate(start), end: formatLocalDate(end) };
     }
     case 'month': {
       const pm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const pe = new Date(now.getFullYear(), now.getMonth(), 0);
       return {
         start: `${pm.getFullYear()}-${String(pm.getMonth() + 1).padStart(2, '0')}-01`,
-        end: pe.toISOString().slice(0, 10),
+        end: formatLocalDate(pe),
       };
     }
     case 'last_month': {
@@ -88,7 +92,7 @@ function getPreviousRange(period: FilterPeriod): { start: string; end: string } 
       const pe = new Date(now.getFullYear(), now.getMonth() - 1, 0);
       return {
         start: `${pm.getFullYear()}-${String(pm.getMonth() + 1).padStart(2, '0')}-01`,
-        end: pe.toISOString().slice(0, 10),
+        end: formatLocalDate(pe),
       };
     }
     default:
@@ -214,20 +218,26 @@ export default function DashboardPage() {
 
   const hasPrevData = prevPaidTxns.length > 0 || prevPengeluaran.length > 0;
 
-  // Daily revenue chart data
+  // Daily revenue chart data — generate all days in the selected range
   const dailyRevenue = useMemo(() => {
+    const range = period === 'custom'
+      ? { start: customStart, end: customEnd }
+      : getDateRange(period);
     const map: Record<string, number> = {};
     paidTxns.forEach((t) => {
       const day = t.shiftDate;
       map[day] = (map[day] || 0) + t.total;
     });
-    return Object.entries(map)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, total]) => ({
-        date: date.slice(5),
-        total,
-      }));
-  }, [paidTxns]);
+    const result: { date: string; total: number }[] = [];
+    const cursor = new Date(range.start + 'T00:00:00');
+    const end = new Date(range.end + 'T00:00:00');
+    while (cursor <= end) {
+      const dateStr = formatLocalDate(cursor);
+      result.push({ date: dateStr.slice(5), total: map[dateStr] || 0 });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return result;
+  }, [paidTxns, period, customStart, customEnd]);
 
   // Top 5 best selling products
   const topProducts = useMemo(() => {

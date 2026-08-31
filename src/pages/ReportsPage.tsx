@@ -43,6 +43,10 @@ import * as XLSX from 'xlsx';
 
 type FilterPeriod = 'today' | '7days' | 'month' | 'last_month' | 'custom';
 
+function formatLocalDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function getDateRange(period: FilterPeriod): { start: string; end: string } {
   const now = new Date();
   const today = getShiftDate();
@@ -52,7 +56,7 @@ function getDateRange(period: FilterPeriod): { start: string; end: string } {
     case '7days': {
       const d = new Date();
       d.setDate(d.getDate() - 6);
-      return { start: d.toISOString().slice(0, 10), end: today };
+      return { start: formatLocalDate(d), end: today };
     }
     case 'month': {
       const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
@@ -63,7 +67,7 @@ function getDateRange(period: FilterPeriod): { start: string; end: string } {
       const le = new Date(now.getFullYear(), now.getMonth(), 0);
       return {
         start: `${lm.getFullYear()}-${String(lm.getMonth() + 1).padStart(2, '0')}-01`,
-        end: le.toISOString().slice(0, 10),
+        end: formatLocalDate(le),
       };
     }
     default:
