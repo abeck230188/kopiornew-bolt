@@ -195,6 +195,10 @@ export async function voidTransaction(
   });
 }
 
+export async function updateTransactionCustomerName(id: string, customerName: string) {
+  await updateDoc(doc(db, 'transactions', id), { customerName });
+}
+
 export async function getTransactionsByShift(shiftId: string): Promise<Transaction[]> {
   return fetchWithFallback<Transaction>(
     () => query(collection(db, 'transactions'), where('shiftId', '==', shiftId), orderBy('createdAt', 'desc')),

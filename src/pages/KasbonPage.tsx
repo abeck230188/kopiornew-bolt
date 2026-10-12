@@ -7,10 +7,10 @@ import {
   addTransaction,
   updateKasbon,
   deleteKasbon,
-  getActiveProducts,
+  updateTransactionCustomerName,
 } from '@/lib/firestore';
 import { formatRupiah, formatDateTime } from '@/lib/format';
-import type { Kasbon, Shift, TransactionItem, Product } from '@/lib/types';
+import type { Kasbon, Shift } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,7 +26,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { CreditCard, CircleCheck as CheckCircle, Clock, DollarSign, ChevronDown, ChevronUp, Pencil, Trash2, Plus, Minus, X, ArrowDownUp } from 'lucide-react';
+import { CreditCard, CircleCheck as CheckCircle, Clock, DollarSign, ChevronDown, ChevronUp, Pencil, Trash2, ArrowDownUp } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props {
@@ -133,12 +133,10 @@ export default function KasbonPage({ activeShift }: Props) {
   const [settleMethod, setSettleMethod] = useState<'cash' | 'qris'>('cash');
   const [processing, setProcessing] = useState(false);
 
-  // Edit state
-  const [editTarget, setEditTarget] = useState<Kasbon | null>(null);
-  const [editItems, setEditItems] = useState<TransactionItem[]>([]);
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [addProductSearch, setAddProductSearch] = useState('');
-  const [saving, setSaving] = useState(false);
+  // Edit name state
+  const [editNameTarget, setEditNameTarget] = useState<Kasbon | null>(null);
+  const [editNameValue, setEditNameValue] = useState('');
+  const [savingName, setSavingName] = useState(false);
 
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<Kasbon | null>(null);
@@ -196,89 +194,41 @@ export default function KasbonPage({ activeShift }: Props) {
     }
   };
 
-  // Edit handlers
-  const openEditDialog = async (k: Kasbon) => {
-    setEditTarget(k);
-    setEditItems([...k.items]);
-    setAddProductSearch('');
-    try {
-      const prods = await getActiveProducts();
-      setAllProducts(prods);
-    } catch {
-      setAllProducts([]);
-    }
+  // Edit name handlers
+  const openEditNameDialog = (k: Kasbon) => {
+    setEditNameTarget(k);
+    setEditNameValue(k.customerName);
   };
 
-  const updateEditItemQty = (index: number, delta: number) => {
-    setEditItems((prev) => {
-      const next = [...prev];
-      const newQty = next[index].qty + delta;
-      if (newQty <= 0) return next;
-      next[index] = {
-        ...next[index],
-        qty: newQty,
-        subtotal: newQty * next[index].harga,
-      };
-      return next;
-    });
-  };
-
-  const removeEditItem = (index: number) => {
-    setEditItems((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const addProductToEdit = (product: Product) => {
-    setEditItems((prev) => {
-      const existing = prev.findIndex((i) => i.productId === product.id);
-      if (existing >= 0) {
-        const next = [...prev];
-        const newQty = next[existing].qty + 1;
-        next[existing] = {
-          ...next[existing],
-          qty: newQty,
-          subtotal: newQty * next[existing].harga,
-        };
-        return next;
-      }
-      return [
-        ...prev,
-        {
-          productId: product.id,
-          productName: product.name,
-          qty: 1,
-          harga: product.hargaJual,
-          hpp: product.hpp,
-          subtotal: product.hargaJual,
-        },
-      ];
-    });
-  };
-
-  const editTotal = editItems.reduce((s, i) => s + i.subtotal, 0);
-  const editTotalHpp = editItems.reduce((s, i) => s + i.hpp * i.qty, 0);
-
-  const handleSaveEdit = async () => {
-    if (!editTarget || editItems.length === 0) {
-      toast.error('Kasbon harus memiliki minimal 1 item');
+  const handleSaveEditName = async () => {
+    if (!editNameTarget) return;
+    const trimmed = editNameValue.trim();
+    if (!trimmed) {
+      toast.error('Nama tidak boleh kosong');
       return;
     }
-    setSaving(true);
+    if (trimmed === editNameTarget.customerName) {
+      setEditNameTarget(null);
+      return;
+    }
+    setSavingName(true);
     try {
-      const editNote = `Diedit oleh Admin pada ${formatDateTime(Date.now())}`;
-      const existingHistory = editTarget.editHistory || [];
-      await updateKasbon(editTarget.id, {
-        items: editItems,
-        total: editTotal,
-        totalHpp: editTotalHpp,
+      const editNote = `Nama diubah dari "${editNameTarget.customerName}" ke "${trimmed}" oleh Admin pada ${formatDateTime(Date.now())}`;
+      const existingHistory = editNameTarget.editHistory || [];
+      await updateKasbon(editNameTarget.id, {
+        customerName: trimmed,
         editHistory: [...existingHistory, editNote],
       });
-      toast.success('Kasbon diperbarui');
-      setEditTarget(null);
+      if (editNameTarget.status === 'lunas' && editNameTarget.settlementTransactionId) {
+        await updateTransactionCustomerName(editNameTarget.settlementTransactionId, trimmed);
+      }
+      toast.success('Nama kasbon diperbarui');
+      setEditNameTarget(null);
       loadData();
     } catch (err: any) {
       toast.error('Gagal menyimpan: ' + err.message);
     } finally {
-      setSaving(false);
+      setSavingName(false);
     }
   };
 
@@ -318,11 +268,7 @@ export default function KasbonPage({ activeShift }: Props) {
   const sortedSettled = sortKasbon(settled);
 
   // Filter products for add dialog
-  const filteredProducts = allProducts.filter(
-    (p) =>
-      p.name.toLowerCase().includes(addProductSearch.toLowerCase()) &&
-      !editItems.some((ei) => ei.productId === p.id)
-  );
+
 
   return (
     <div className="space-y-4">
@@ -367,7 +313,7 @@ export default function KasbonPage({ activeShift }: Props) {
                 isAdmin={isAdmin}
                 activeShift={activeShift}
                 onSettle={setSettleTarget}
-                onEdit={openEditDialog}
+                onEdit={openEditNameDialog}
                 onDelete={setDeleteTarget}
               />
             ))
@@ -390,7 +336,7 @@ export default function KasbonPage({ activeShift }: Props) {
                 isAdmin={isAdmin}
                 activeShift={activeShift}
                 onSettle={setSettleTarget}
-                onEdit={openEditDialog}
+                onEdit={openEditNameDialog}
                 onDelete={setDeleteTarget}
               />
             ))
@@ -435,77 +381,29 @@ export default function KasbonPage({ activeShift }: Props) {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Kasbon Dialog - Admin only */}
-      <Dialog open={!!editTarget} onOpenChange={(open) => { if (!open) setEditTarget(null); }}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      {/* Edit Kasbon Name Dialog - Admin only */}
+      <Dialog open={!!editNameTarget} onOpenChange={(open) => { if (!open) setEditNameTarget(null); }}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Kasbon - {editTarget?.customerName}</DialogTitle>
-            <DialogDescription>Tambah, hapus, atau ubah jumlah produk</DialogDescription>
+            <DialogTitle>Edit Nama Kasbon</DialogTitle>
+            <DialogDescription>Ubah nama customer/penanggung kasbon</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            {editItems.map((item, idx) => (
-              <div key={idx} className="flex items-center justify-between bg-amber-50 rounded-lg px-3 py-2 border border-amber-100">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{item.productName}</p>
-                  <p className="text-xs text-muted-foreground">{formatRupiah(item.harga)} @</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateEditItemQty(idx, -1)} disabled={item.qty <= 1}>
-                    <Minus className="h-3 w-3" />
-                  </Button>
-                  <span className="w-8 text-center font-medium text-sm">{item.qty}</span>
-                  <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateEditItemQty(idx, 1)}>
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                  <span className="w-24 text-right font-medium text-sm">{formatRupiah(item.subtotal)}</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => removeEditItem(idx)}>
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-
-            {editItems.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">Tidak ada item. Tambahkan produk di bawah.</p>
-            )}
-
-            <div className="flex justify-between font-bold text-sm pt-2 border-t">
-              <span>Total</span>
-              <span>{formatRupiah(editTotal)}</span>
-            </div>
-
-            {/* Add product section */}
-            <div className="pt-2 border-t">
-              <Label className="text-sm font-medium">Tambah Produk</Label>
+            <div className="space-y-2">
+              <Label>Nama</Label>
               <Input
-                placeholder="Cari produk..."
-                value={addProductSearch}
-                onChange={(e) => setAddProductSearch(e.target.value)}
-                className="mt-1"
+                placeholder="Masukkan nama"
+                value={editNameValue}
+                onChange={(e) => setEditNameValue(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEditName(); }}
               />
-              {addProductSearch && filteredProducts.length > 0 && (
-                <div className="mt-1 max-h-32 overflow-y-auto border rounded-lg bg-white">
-                  {filteredProducts.slice(0, 10).map((p) => (
-                    <button
-                      key={p.id}
-                      className="w-full text-left px-3 py-1.5 text-sm hover:bg-amber-50 flex justify-between items-center"
-                      onClick={() => { addProductToEdit(p); setAddProductSearch(''); }}
-                    >
-                      <span>{p.name}</span>
-                      <span className="text-xs text-muted-foreground">{formatRupiah(p.hargaJual)}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {addProductSearch && filteredProducts.length === 0 && (
-                <p className="text-xs text-muted-foreground mt-1">Produk tidak ditemukan</p>
-              )}
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditTarget(null)}>Batal</Button>
-            <Button onClick={handleSaveEdit} disabled={saving || editItems.length === 0}>
-              {saving ? 'Menyimpan...' : 'Simpan'}
+            <Button variant="outline" onClick={() => setEditNameTarget(null)}>Batal</Button>
+            <Button onClick={handleSaveEditName} disabled={savingName || !editNameValue.trim()}>
+              {savingName ? 'Menyimpan...' : 'Simpan'}
             </Button>
           </DialogFooter>
         </DialogContent>
