@@ -23,7 +23,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Receipt, Plus, Minus, Trash2, CreditCard, QrCode, Search, ShoppingCart } from 'lucide-react';
+import { Receipt, Plus, Minus, Trash2, CreditCard, QrCode, Search, ShoppingCart, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props {
@@ -263,7 +263,14 @@ export default function OpenBillPage({ activeShift, onNavigate }: Props) {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">{bill.customerName}</p>
-                    <p className="text-xs text-muted-foreground">{bill.items.length} item</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-0.5">
+                        <Clock className="h-3 w-3" />
+                        {new Date(bill.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <span>·</span>
+                      <span>{bill.items.length} item</span>
+                    </div>
                   </div>
                   <Badge variant="secondary" className="text-primary font-bold">
                     {formatRupiah(bill.total)}
